@@ -1,6 +1,12 @@
 // Main Application Script
 import { db } from './firebase-config.js';
-import { collection, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  serverTimestamp 
+} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation elements
@@ -29,69 +35,66 @@ document.addEventListener('DOMContentLoaded', () => {
   navTrack.addEventListener('click', () => setActiveTab(navTrack, screenTrack));
   navStaff.addEventListener('click', () => setActiveTab(navStaff, screenStaff));
 
-  // Complaint Submission Form elements
+  // ==========================================
+  // Feature 1: Submit Complaint Flow
+  // ==========================================
   const complaintForm = document.getElementById('complaint-form');
   const locationInput = document.getElementById('complaint-location');
   const issueTypeSelect = document.getElementById('complaint-issue-type');
   const descriptionTextarea = document.getElementById('complaint-description');
   const urgentCheckbox = document.getElementById('complaint-urgent');
   const submitBtn = document.getElementById('submit-btn');
-  const errorNotice = document.getElementById('submission-error');
+  const submitErrorNotice = document.getElementById('submission-error');
   const successCard = document.getElementById('submission-success');
   const referenceNumberDisplay = document.getElementById('reference-number');
   const submitAnotherBtn = document.getElementById('submit-another-btn');
 
-  function showError(message) {
-    errorNotice.textContent = message;
-    errorNotice.style.display = 'block';
+  function showSubmitError(message) {
+    submitErrorNotice.textContent = message;
+    submitErrorNotice.style.display = 'block';
   }
 
-  function clearError() {
-    errorNotice.textContent = '';
-    errorNotice.style.display = 'none';
+  function clearSubmitError() {
+    submitErrorNotice.textContent = '';
+    submitErrorNotice.style.display = 'none';
   }
 
-  // Allowed issue types matching the plan
   const ALLOWED_ISSUE_TYPES = [
     'Electrical', 'Plumbing', 'Furniture', 'Door/Lock', 'Mess', 'Wi-Fi', 'Other'
   ];
 
   complaintForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    clearError();
+    clearSubmitError();
 
     const location = locationInput.value.trim();
     const issueType = issueTypeSelect.value;
     const description = descriptionTextarea.value.trim();
     const isUrgent = Boolean(urgentCheckbox.checked);
 
-    // Validation
     if (location.length < 3 || location.length > 100) {
-      showError('Please provide a valid location between 3 and 100 characters.');
+      showSubmitError('Please provide a valid location between 3 and 100 characters.');
       return;
     }
 
     if (!ALLOWED_ISSUE_TYPES.includes(issueType)) {
-      showError('Please select a valid issue type.');
+      showSubmitError('Please select a valid issue type.');
       return;
     }
 
     if (description.length < 5 || description.length > 1000) {
-      showError('Please provide a description between 5 and 1000 characters.');
+      showSubmitError('Please provide a description between 5 and 1000 characters.');
       return;
     }
 
-    // Prepare submission state
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
 
     try {
-      // Generate a new Firestore document reference with a random 20-character auto-ID
       const complaintsCollection = collection(db, 'complaints');
       const newComplaintRef = doc(complaintsCollection);
       const randomComplaintId = newComplaintRef.id;
 
-      // Save document to Firestore with exact expected fields
       await setDoc(newComplaintRef, {
         location: location,
         issueType: issueType,
@@ -103,23 +106,20 @@ document.addEventListener('DOMContentLoaded', () => {
         createdAt: serverTimestamp()
       });
 
-      // Show reference number only after successful save
       referenceNumberDisplay.textContent = randomComplaintId;
       complaintForm.style.display = 'none';
       successCard.style.display = 'block';
-
-      // Reset form fields
       complaintForm.reset();
     } catch (err) {
       console.error('Error submitting complaint:', err);
 
       if (err.code === 'permission-denied') {
-        showError(
+        showSubmitError(
           'Submission failed (permission-denied): Firestore Production mode rules blocked saving. ' +
           'Please ensure the complaints create rule is published in your Firebase Console.'
         );
       } else {
-        showError(`Submission failed: ${err.message || 'Please check your connection and try again.'}`);
+        showSubmitError(`Submission failed: ${err.message || 'Please check your connection and try again.'}`);
       }
     } finally {
       submitBtn.disabled = false;
@@ -127,12 +127,108 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Handle "Submit Another Complaint" action
   submitAnotherBtn.addEventListener('click', () => {
-    clearError();
+    clearSubmitError();
     successCard.style.display = 'none';
     complaintForm.style.display = 'block';
     submitBtn.disabled = false;
     submitBtn.textContent = 'Submit Complaint';
+  });
+
+  // ==========================================
+  // Feature 2: Track Complaint Flow
+  // ==========================================
+  const trackForm = document.getElementById('track-form');
+  const trackReferenceInput = document.getElementById('track-reference');
+  const trackBtn = document.getElementById('track-btn');
+  const trackError = document.getElementById('track-error');
+  const trackResult = document.getElementById('track-result');
+
+  const resultId = document.getElementById('result-id');
+  const resultStatus = document.getElementById('result-status');
+  const resultStatusText = document.getElementById('result-status-text');
+  const resultOwner = document.getElementById('result-owner');
+  const resultExpected = document.getElementById('result-expected');
+  const resultLocation = document.getElementById('result-location');
+  const resultCategory = document.getElementById('result-category');
+  const resultUrgency = document.getElementById('result-urgency');
+  const resultDescription = document.getElementById('result-description');
+
+  function showTrackError(message) {
+    trackError.textContent = message;
+    trackError.style.display = 'block';
+    trackResult.style.display = 'none';
+  }
+
+  function clearTrackError() {
+    trackError.textContent = '';
+    trackError.style.display = 'none';
+  }
+
+  trackForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearTrackError();
+    trackResult.style.display = 'none';
+
+    const referenceKey = trackReferenceInput.value.trim();
+
+    if (!referenceKey) {
+      showTrackError('Please enter a complaint reference key.');
+      return;
+    }
+
+    trackBtn.disabled = true;
+    trackBtn.textContent = 'Checking...';
+
+    try {
+      // Direct single-document read using the exact reference key
+      const complaintDocRef = doc(db, 'complaints', referenceKey);
+      const docSnapshot = await getDoc(complaintDocRef);
+
+      if (!docSnapshot.exists()) {
+        showTrackError(`No complaint found with reference "${referenceKey}". Please check the key and try again.`);
+        return;
+      }
+
+      const data = docSnapshot.data();
+
+      // Render retrieved data
+      resultId.textContent = docSnapshot.id;
+      const statusValue = data.status || 'Submitted';
+      resultStatus.textContent = statusValue;
+      resultStatusText.textContent = statusValue;
+
+      resultOwner.textContent = data.assignedOwner && data.assignedOwner.trim() 
+        ? data.assignedOwner 
+        : 'Unassigned';
+
+      resultExpected.textContent = data.expectedTime && data.expectedTime.trim() 
+        ? data.expectedTime 
+        : 'Pending review';
+
+      resultLocation.textContent = data.location || '—';
+      resultCategory.textContent = data.issueType || '—';
+      resultUrgency.textContent = data.isUrgent 
+        ? 'Urgent (Safety or Security issue)' 
+        : 'Normal';
+
+      resultDescription.textContent = data.description || '—';
+
+      trackResult.style.display = 'block';
+    } catch (err) {
+      console.error('Error retrieving complaint:', err);
+
+      if (err.code === 'permission-denied') {
+        showTrackError(
+          'Tracking failed (permission-denied): Firestore Production mode rules blocked retrieving this document. ' +
+          'Please ensure the single-document "get" rule is published in your Firebase Console.'
+        );
+      } else {
+        showTrackError(`Unable to retrieve complaint: ${err.message || 'Please check your connection and try again.'}`);
+      }
+    } finally {
+      trackBtn.disabled = false;
+      trackBtn.textContent = 'Check Status';
+    }
   });
 });

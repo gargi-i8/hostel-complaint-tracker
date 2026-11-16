@@ -102,6 +102,12 @@ header h1 {
   color: var(--text-main);
 }
 
+.section-intro {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
 .privacy-notice {
   background-color: var(--notice-bg);
   border: 1px solid var(--notice-border);
@@ -296,4 +302,85 @@ textarea:focus {
 
 .secondary-btn:hover {
   background-color: #f9fafb;
+}
+
+/* Track Complaint Card Styles */
+.track-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.track-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.track-id-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.track-id-label strong {
+  color: var(--text-main);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.status-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background-color: #dbeafe;
+  color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+  gap: 12px;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: var(--text-main);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.detail-block {
+  margin-top: 14px;
+}
+
+.detail-description {
+  background-color: #f9fafb;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin-top: 6px;
+  white-space: pre-wrap;
+  line-height: 1.5;
 }

@@ -94,12 +94,63 @@
         </div>
       </section>
 
-      <!-- Screen 2: Track Complaint (Placeholder) -->
+      <!-- Screen 2: Track Complaint -->
       <section id="screen-track" class="screen-card">
         <h2>Track Complaint</h2>
-        <div class="placeholder-content">
-          <p>Enter your unique complaint reference to check its current status, assigned owner, and expected repair time.</p>
-          <div class="placeholder-badge">Placeholder Screen &mdash; Status tracking will be wired up in the next step.</div>
+        <p class="section-intro">Enter your exact complaint reference key to check its current repair progress.</p>
+        
+        <form id="track-form">
+          <div class="form-group">
+            <label for="track-reference">Complaint Reference Key <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="track-reference" 
+              name="reference" 
+              placeholder="Enter your exact reference key" 
+              required
+            >
+          </div>
+          <button type="submit" id="track-btn" class="submit-btn">Check Status</button>
+        </form>
+
+        <div id="track-error" class="error-notice" style="display: none; margin-top: 16px;"></div>
+
+        <div id="track-result" class="track-card" style="display: none;">
+          <div class="track-header">
+            <span class="track-id-label">Reference: <strong id="result-id"></strong></span>
+            <span id="result-status" class="status-badge"></span>
+          </div>
+
+          <div class="track-details">
+            <div class="detail-row">
+              <span class="detail-label">Status</span>
+              <span id="result-status-text" class="detail-value"></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Assigned Owner</span>
+              <span id="result-owner" class="detail-value"></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Expected Time / Next Update</span>
+              <span id="result-expected" class="detail-value"></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Location</span>
+              <span id="result-location" class="detail-value"></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Issue Category</span>
+              <span id="result-category" class="detail-value"></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Urgency</span>
+              <span id="result-urgency" class="detail-value"></span>
+            </div>
+            <div class="detail-block">
+              <span class="detail-label">Description</span>
+              <p id="result-description" class="detail-description"></p>
+            </div>
+          </div>
         </div>
       </section>
 
