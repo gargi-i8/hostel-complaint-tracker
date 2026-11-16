@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hostel Complaint Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Hostel Complaint Tracker</h1>
+      <p class="subtitle">Report facility issues and track repair status</p>
+      
+      <nav class="nav-bar" aria-label="Main Navigation">
+        <button id="nav-report" class="nav-btn active" type="button">Report an Issue</button>
+        <button id="nav-track" class="nav-btn" type="button">Track Complaint</button>
+        <button id="nav-staff" class="nav-btn" type="button">Staff Portal</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Screen 1: Report an Issue (Placeholder) -->
+      <section id="screen-report" class="screen-card active">
+        <h2>Report an Issue</h2>
+        <div class="privacy-notice">
+          <strong>Privacy Notice:</strong> Anyone with your complaint reference can view the location and description. Do not include student names, roll numbers, room resident identities, phone numbers, or any personal details in your submission.
+        </div>
+        <div class="placeholder-content">
+          <p>Submit a hostel facility complaint with location, issue category, and description.</p>
+          <div class="placeholder-badge">Placeholder Screen &mdash; Form submission will be wired up in the next step.</div>
+        </div>
+      </section>
+
+      <!-- Screen 2: Track Complaint (Placeholder) -->
+      <section id="screen-track" class="screen-card">
+        <h2>Track Complaint</h2>
+        <div class="placeholder-content">
+          <p>Enter your unique complaint reference to check its current status, assigned owner, and expected repair time.</p>
+          <div class="placeholder-badge">Placeholder Screen &mdash; Status tracking will be wired up in the next step.</div>
+        </div>
+      </section>
+
+      <!-- Screen 3: Staff Portal (Placeholder) -->
+      <section id="screen-staff" class="screen-card">
+        <h2>Staff Portal</h2>
+        <div class="placeholder-content">
+          <p>Sign in with authorized staff credentials to view the complaint queue, assign owners, and update repair statuses.</p>
+          <div class="placeholder-badge">Placeholder Screen &mdash; Staff login & queue management will be wired up in the next step.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
