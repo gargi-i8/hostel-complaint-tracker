@@ -154,12 +154,57 @@
         </div>
       </section>
 
-      <!-- Screen 3: Staff Portal (Placeholder) -->
+      <!-- Screen 3: Staff Portal -->
       <section id="screen-staff" class="screen-card">
         <h2>Staff Portal</h2>
-        <div class="placeholder-content">
-          <p>Sign in with authorized staff credentials to view the complaint queue, assign owners, and update repair statuses.</p>
-          <div class="placeholder-badge">Placeholder Screen &mdash; Staff login & queue management will be wired up in the next step.</div>
+
+        <!-- View A: Staff Sign In -->
+        <div id="staff-login-view">
+          <p class="section-intro">Sign in with authorized staff credentials to view and manage the complaint queue.</p>
+          
+          <div id="staff-login-error" class="error-notice" style="display: none;"></div>
+
+          <form id="staff-login-form">
+            <div class="form-group">
+              <label for="staff-email">Staff Email <span class="required">*</span></label>
+              <input 
+                type="email" 
+                id="staff-email" 
+                name="email" 
+                placeholder="staff@example.com" 
+                required
+                autocomplete="email"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="staff-password">Password <span class="required">*</span></label>
+              <input 
+                type="password" 
+                id="staff-password" 
+                name="password" 
+                placeholder="••••••••" 
+                required
+                autocomplete="current-password"
+              >
+            </div>
+
+            <button type="submit" id="staff-login-btn" class="submit-btn">Sign In</button>
+          </form>
+        </div>
+
+        <!-- View B: Staff Dashboard & Queue -->
+        <div id="staff-dashboard-view" style="display: none;">
+          <div class="staff-header-bar">
+            <span class="staff-user-label">Signed in as: <strong id="staff-user-email"></strong></span>
+            <button type="button" id="staff-logout-btn" class="secondary-btn">Sign Out</button>
+          </div>
+
+          <div id="staff-queue-error" class="error-notice" style="display: none;"></div>
+          <div id="staff-queue-loading" class="queue-loading">Loading complaint queue...</div>
+          <div id="staff-queue-empty" class="queue-empty" style="display: none;">No complaints found in the queue.</div>
+
+          <div id="staff-queue-list" class="queue-list"></div>
         </div>
       </section>
     </main>

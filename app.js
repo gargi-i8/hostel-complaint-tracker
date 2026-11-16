@@ -1,10 +1,17 @@
 // Main Application Script
-import { db } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
+import { 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js';
 import { 
   collection, 
   doc, 
   setDoc, 
   getDoc, 
+  getDocs, 
+  updateDoc, 
   serverTimestamp 
 } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
@@ -181,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     trackBtn.textContent = 'Checking...';
 
     try {
-      // Direct single-document read using the exact reference key
       const complaintDocRef = doc(db, 'complaints', referenceKey);
       const docSnapshot = await getDoc(complaintDocRef);
 
@@ -192,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = docSnapshot.data();
 
-      // Render retrieved data
       resultId.textContent = docSnapshot.id;
       const statusValue = data.status || 'Submitted';
       resultStatus.textContent = statusValue;
@@ -229,6 +234,296 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       trackBtn.disabled = false;
       trackBtn.textContent = 'Check Status';
+    }
+  });
+
+  // ==========================================
+  // Feature 3: Staff Portal Flow
+  // ==========================================
+  const staffLoginView = document.getElementById('staff-login-view');
+  const staffLoginForm = document.getElementById('staff-login-form');
+  const staffEmailInput = document.getElementById('staff-email');
+  const staffPasswordInput = document.getElementById('staff-password');
+  const staffLoginBtn = document.getElementById('staff-login-btn');
+  const staffLoginError = document.getElementById('staff-login-error');
+
+  const staffDashboardView = document.getElementById('staff-dashboard-view');
+  const staffUserEmail = document.getElementById('staff-user-email');
+  const staffLogoutBtn = document.getElementById('staff-logout-btn');
+  const staffQueueLoading = document.getElementById('staff-queue-loading');
+  const staffQueueEmpty = document.getElementById('staff-queue-empty');
+  const staffQueueError = document.getElementById('staff-queue-error');
+  const staffQueueList = document.getElementById('staff-queue-list');
+
+  const VALID_STATUSES = ['Submitted', 'Assigned', 'In Progress', 'Resolved'];
+
+  function showStaffLoginError(message) {
+    staffLoginError.textContent = message;
+    staffLoginError.style.display = 'block';
+  }
+
+  function clearStaffLoginError() {
+    staffLoginError.textContent = '';
+    staffLoginError.style.display = 'none';
+  }
+
+  function showStaffQueueError(message) {
+    staffQueueError.textContent = message;
+    staffQueueError.style.display = 'block';
+  }
+
+  function clearStaffQueueError() {
+    staffQueueError.textContent = '';
+    staffQueueError.style.display = 'none';
+  }
+
+  // Handle Staff Sign In
+  staffLoginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearStaffLoginError();
+
+    const email = staffEmailInput.value.trim();
+    const password = staffPasswordInput.value;
+
+    if (!email || !password) {
+      showStaffLoginError('Please enter both email and password.');
+      return;
+    }
+
+    staffLoginBtn.disabled = true;
+    staffLoginBtn.textContent = 'Signing In...';
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      staffLoginForm.reset();
+    } catch (err) {
+      console.error('Staff sign-in error:', err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        showStaffLoginError('Invalid staff email or password.');
+      } else if (err.code === 'auth/too-many-requests') {
+        showStaffLoginError('Too many failed sign-in attempts. Please try again later.');
+      } else {
+        showStaffLoginError(`Sign-in failed: ${err.message || 'Please check your credentials and try again.'}`);
+      }
+    } finally {
+      staffLoginBtn.disabled = false;
+      staffLoginBtn.textContent = 'Sign In';
+    }
+  });
+
+  // Handle Staff Sign Out
+  staffLogoutBtn.addEventListener('click', async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Sign-out error:', err);
+    }
+  });
+
+  // Fetch and Render Staff Complaint Queue
+  async function loadStaffQueue() {
+    clearStaffQueueError();
+    staffQueueLoading.style.display = 'block';
+    staffQueueEmpty.style.display = 'none';
+    staffQueueList.innerHTML = '';
+
+    try {
+      const complaintsCol = collection(db, 'complaints');
+      const snapshot = await getDocs(complaintsCol);
+
+      if (snapshot.empty) {
+        staffQueueEmpty.style.display = 'block';
+        return;
+      }
+
+      // Convert docs and sort: urgent first, then by createdAt descending
+      const complaints = [];
+      snapshot.forEach((docSnap) => {
+        complaints.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      complaints.sort((a, b) => {
+        // Urgent complaints take precedence
+        if (a.isUrgent && !b.isUrgent) return -1;
+        if (!a.isUrgent && b.isUrgent) return 1;
+
+        // Then by creation timestamp if available
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
+
+      // Render each complaint card
+      complaints.forEach((item) => {
+        const itemCard = createQueueItemElement(item);
+        staffQueueList.appendChild(itemCard);
+      });
+    } catch (err) {
+      console.error('Error loading staff queue:', err);
+      if (err.code === 'permission-denied') {
+        showStaffQueueError(
+          'Access Denied (permission-denied): You do not have permission to view the complaint queue. ' +
+          'Ensure your Firebase user UID is listed in the /staff collection and Firestore rules allow staff listing.'
+        );
+      } else {
+        showStaffQueueError(`Failed to load queue: ${err.message || 'Please check your connection and try again.'}`);
+      }
+    } finally {
+      staffQueueLoading.style.display = 'none';
+    }
+  }
+
+  // Create DOM Element for a Complaint Item in the Staff Queue
+  function createQueueItemElement(complaint) {
+    const card = document.createElement('div');
+    card.className = `queue-item ${complaint.isUrgent ? 'urgent' : ''}`;
+    card.id = `queue-item-${complaint.id}`;
+
+    const currentOwner = complaint.assignedOwner || '';
+    const currentStatus = complaint.status || 'Submitted';
+    const currentExpected = complaint.expectedTime || '';
+
+    card.innerHTML = `
+      <div class="queue-item-header">
+        <span class="queue-ref">Reference: <strong>${escapeHtml(complaint.id)}</strong></span>
+        ${complaint.isUrgent ? '<span class="urgent-badge">Urgent Safety/Security</span>' : ''}
+      </div>
+
+      <div class="queue-meta">
+        <strong>Location:</strong> ${escapeHtml(complaint.location || '—')} &bull; 
+        <strong>Category:</strong> ${escapeHtml(complaint.issueType || '—')}
+      </div>
+
+      <div class="queue-desc">${escapeHtml(complaint.description || '—')}</div>
+
+      <form class="queue-update-form" id="update-form-${complaint.id}">
+        <div class="queue-field">
+          <label for="owner-${complaint.id}">Assigned Owner</label>
+          <input 
+            type="text" 
+            id="owner-${complaint.id}" 
+            name="assignedOwner" 
+            placeholder="Staff / Technician Name"
+            maxlength="100"
+            value="${escapeHtml(currentOwner)}"
+          >
+        </div>
+
+        <div class="queue-field">
+          <label for="status-${complaint.id}">Status</label>
+          <select id="status-${complaint.id}" name="status">
+            ${VALID_STATUSES.map(s => `
+              <option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div class="queue-field full-width">
+          <label for="expected-${complaint.id}">Expected Time / Next Update</label>
+          <input 
+            type="text" 
+            id="expected-${complaint.id}" 
+            name="expectedTime" 
+            placeholder="e.g., Today by 5 PM, or parts ordered"
+            maxlength="100"
+            value="${escapeHtml(currentExpected)}"
+          >
+        </div>
+
+        <div class="queue-field full-width">
+          <button type="submit" class="update-btn" id="update-btn-${complaint.id}">Save Changes</button>
+          <div class="update-feedback" id="feedback-${complaint.id}" style="display: none;"></div>
+        </div>
+      </form>
+    `;
+
+    // Attach event handler for updating this complaint
+    const form = card.querySelector(`#update-form-${complaint.id}`);
+    const ownerInput = card.querySelector(`#owner-${complaint.id}`);
+    const statusSelect = card.querySelector(`#status-${complaint.id}`);
+    const expectedInput = card.querySelector(`#expected-${complaint.id}`);
+    const updateBtn = card.querySelector(`#update-btn-${complaint.id}`);
+    const feedback = card.querySelector(`#feedback-${complaint.id}`);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      feedback.style.display = 'none';
+      feedback.className = 'update-feedback';
+
+      const newOwner = ownerInput.value.trim();
+      const newStatus = statusSelect.value;
+      const newExpected = expectedInput.value.trim();
+
+      if (!VALID_STATUSES.includes(newStatus)) {
+        feedback.textContent = 'Please select a valid status.';
+        feedback.className = 'update-feedback error';
+        feedback.style.display = 'block';
+        return;
+      }
+
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Saving...';
+
+      try {
+        const complaintDocRef = doc(db, 'complaints', complaint.id);
+        await updateDoc(complaintDocRef, {
+          assignedOwner: newOwner,
+          status: newStatus,
+          expectedTime: newExpected,
+          updatedAt: serverTimestamp()
+        });
+
+        feedback.textContent = 'Updated successfully.';
+        feedback.className = 'update-feedback success';
+        feedback.style.display = 'block';
+
+        setTimeout(() => {
+          if (feedback) feedback.style.display = 'none';
+        }, 3000);
+      } catch (err) {
+        console.error('Error updating complaint:', err);
+        feedback.className = 'update-feedback error';
+        feedback.style.display = 'block';
+
+        if (err.code === 'permission-denied') {
+          feedback.textContent = 'Update failed (permission-denied): You do not have permission to update this record.';
+        } else {
+          feedback.textContent = `Update failed: ${err.message || 'Please try again.'}`;
+        }
+      } finally {
+        updateBtn.disabled = false;
+        updateBtn.textContent = 'Save Changes';
+      }
+    });
+
+    return card;
+  }
+
+  // Utility to prevent XSS in rendered complaint content
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Auth state listener: Toggle between Staff Login and Dashboard
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      staffLoginView.style.display = 'none';
+      staffDashboardView.style.display = 'block';
+      staffUserEmail.textContent = user.email || user.uid;
+      loadStaffQueue();
+    } else {
+      staffLoginView.style.display = 'block';
+      staffDashboardView.style.display = 'none';
+      staffUserEmail.textContent = '';
+      staffQueueList.innerHTML = '';
+      clearStaffLoginError();
+      clearStaffQueueError();
     }
   });
 });
