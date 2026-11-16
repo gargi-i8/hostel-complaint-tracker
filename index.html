@@ -20,15 +20,77 @@
     </header>
 
     <main>
-      <!-- Screen 1: Report an Issue (Placeholder) -->
+      <!-- Screen 1: Report an Issue -->
       <section id="screen-report" class="screen-card active">
         <h2>Report an Issue</h2>
+        
         <div class="privacy-notice">
           <strong>Privacy Notice:</strong> Anyone with your complaint reference can view the location and description. Do not include student names, roll numbers, room resident identities, phone numbers, or any personal details in your submission.
         </div>
-        <div class="placeholder-content">
-          <p>Submit a hostel facility complaint with location, issue category, and description.</p>
-          <div class="placeholder-badge">Placeholder Screen &mdash; Form submission will be wired up in the next step.</div>
+
+        <div id="submission-error" class="error-notice" style="display: none;"></div>
+
+        <form id="complaint-form">
+          <div class="form-group">
+            <label for="complaint-location">Location <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="complaint-location" 
+              name="location" 
+              placeholder="e.g., Block B, Room 204 or Mess Hall 1" 
+              required 
+              minlength="3" 
+              maxlength="100"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="complaint-issue-type">Issue Type <span class="required">*</span></label>
+            <select id="complaint-issue-type" name="issueType" required>
+              <option value="" disabled selected>Select an issue category</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="Furniture">Furniture</option>
+              <option value="Door/Lock">Door/Lock</option>
+              <option value="Mess">Mess</option>
+              <option value="Wi-Fi">Wi-Fi</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="complaint-description">Description <span class="required">*</span></label>
+            <textarea 
+              id="complaint-description" 
+              name="description" 
+              rows="4" 
+              placeholder="Describe the facility problem in detail (do not include personal info)..." 
+              required 
+              minlength="5" 
+              maxlength="1000"
+            ></textarea>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label" for="complaint-urgent">
+              <input type="checkbox" id="complaint-urgent" name="isUrgent">
+              <span>Mark as urgent (Safety or security issue)</span>
+            </label>
+          </div>
+
+          <button type="submit" id="submit-btn" class="submit-btn">Submit Complaint</button>
+        </form>
+
+        <!-- Reference number displayed only after successful save -->
+        <div id="submission-success" class="success-card" style="display: none;">
+          <div class="success-title">Complaint Submitted Successfully</div>
+          <p class="success-text">Your complaint has been saved. Please record your unique reference key below to track repair progress:</p>
+          <div class="reference-box">
+            <span class="reference-label">Complaint Reference Key:</span>
+            <span id="reference-number" class="reference-number"></span>
+          </div>
+          <p class="reference-hint">Keep this reference private. Anyone who has this key can view this complaint's location and description.</p>
+          <button type="button" id="submit-another-btn" class="secondary-btn">Submit Another Complaint</button>
         </div>
       </section>
 
