@@ -12,6 +12,7 @@ import {
   getDoc, 
   getDocs, 
   updateDoc, 
+  deleteDoc, 
   serverTimestamp 
 } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
@@ -253,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const staffQueueLoading = document.getElementById('staff-queue-loading');
   const staffQueueEmpty = document.getElementById('staff-queue-empty');
   const staffQueueError = document.getElementById('staff-queue-error');
+  const staffQueueNotice = document.getElementById('staff-queue-notice');
   const staffQueueList = document.getElementById('staff-queue-list');
 
   const VALID_STATUSES = ['Submitted', 'Assigned', 'In Progress', 'Resolved'];
@@ -275,6 +277,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearStaffQueueError() {
     staffQueueError.textContent = '';
     staffQueueError.style.display = 'none';
+  }
+
+  function showStaffQueueNotice(message) {
+    if (staffQueueNotice) {
+      staffQueueNotice.textContent = message;
+      staffQueueNotice.style.display = 'block';
+      setTimeout(() => {
+        if (staffQueueNotice) staffQueueNotice.style.display = 'none';
+      }, 4000);
+    }
   }
 
   // Handle Staff Sign In
@@ -323,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch and Render Staff Complaint Queue
   async function loadStaffQueue() {
     clearStaffQueueError();
+    if (staffQueueNotice) staffQueueNotice.style.display = 'none';
     staffQueueLoading.style.display = 'block';
     staffQueueEmpty.style.display = 'none';
     staffQueueList.innerHTML = '';
@@ -336,24 +349,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Convert docs and sort: urgent first, then by createdAt descending
       const complaints = [];
       snapshot.forEach((docSnap) => {
         complaints.push({ id: docSnap.id, ...docSnap.data() });
       });
 
       complaints.sort((a, b) => {
-        // Urgent complaints take precedence
         if (a.isUrgent && !b.isUrgent) return -1;
         if (!a.isUrgent && b.isUrgent) return 1;
 
-        // Then by creation timestamp if available
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
         const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
         return timeB - timeA;
       });
 
-      // Render each complaint card
       complaints.forEach((item) => {
         const itemCard = createQueueItemElement(item);
         staffQueueList.appendChild(itemCard);
@@ -386,7 +395,24 @@ document.addEventListener('DOMContentLoaded', () => {
     card.innerHTML = `
       <div class="queue-item-header">
         <span class="queue-ref">Reference: <strong>${escapeHtml(complaint.id)}</strong></span>
-        ${complaint.isUrgent ? '<span class="urgent-badge">Urgent Safety/Security</span>' : ''}
+        <div class="queue-header-actions">
+          ${complaint.isUrgent ? '<span class="urgent-badge">Urgent Safety/Security</span>' : ''}
+          <button 
+            type="button" 
+            class="delete-btn" 
+            id="delete-btn-${complaint.id}" 
+            aria-label="Delete complaint" 
+            title="Delete complaint"
+          >
+            <svg class="trash-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            <span>Delete complaint</span>
+          </button>
+        </div>
       </div>
 
       <div class="queue-meta">
@@ -444,7 +470,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const expectedInput = card.querySelector(`#expected-${complaint.id}`);
     const updateBtn = card.querySelector(`#update-btn-${complaint.id}`);
     const feedback = card.querySelector(`#feedback-${complaint.id}`);
+    const deleteBtn = card.querySelector(`#delete-btn-${complaint.id}`);
 
+    // Update Handler
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       feedback.style.display = 'none';
@@ -493,6 +521,47 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         updateBtn.disabled = false;
         updateBtn.textContent = 'Save Changes';
+      }
+    });
+
+    // Delete Handler (Staff Only, with confirmation)
+    deleteBtn.addEventListener('click', async () => {
+      const confirmed = window.confirm(
+        `Are you sure you want to delete this complaint (${complaint.id})? This action cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      deleteBtn.disabled = true;
+      const btnSpan = deleteBtn.querySelector('span');
+      if (btnSpan) btnSpan.textContent = 'Deleting...';
+      clearStaffQueueError();
+
+      try {
+        const complaintDocRef = doc(db, 'complaints', complaint.id);
+        await deleteDoc(complaintDocRef);
+
+        // Remove card from visible queue
+        card.remove();
+
+        // Check if queue is now empty
+        const remainingItems = staffQueueList.querySelectorAll('.queue-item');
+        if (remainingItems.length === 0) {
+          staffQueueEmpty.style.display = 'block';
+        }
+
+        showStaffQueueNotice(`Complaint ${complaint.id} was successfully deleted.`);
+      } catch (err) {
+        console.error('Error deleting complaint:', err);
+        deleteBtn.disabled = false;
+        if (btnSpan) btnSpan.textContent = 'Delete complaint';
+
+        if (err.code === 'permission-denied') {
+          showStaffQueueError(
+            `Delete failed (permission-denied): Firestore security rules currently deny deleting complaint ${complaint.id}.`
+          );
+        } else {
+          showStaffQueueError(`Failed to delete complaint: ${err.message || 'Please try again.'}`);
+        }
       }
     });
 
